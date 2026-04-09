@@ -49,9 +49,8 @@ INFO_TIMING    = "info_timing"      # 自由テキスト入力
 INFO_FEEDER    = "info_feeder"
 INFO_SUPPLEMENT= "info_supplement"  # 補足入力
 TNR_CONSENT    = "tnr_consent"
-TNR_FEEDING    = "tnr_feeding"
-TNR_LOCATION   = "tnr_location"
-TNR_COUNT      = "tnr_count"
+TNR_LOCATION   = "tnr_location"    # 場所（STEP1）
+TNR_DETAIL     = "tnr_detail"      # 自由記入（STEP2）
 
 # ─── セッションヘルパー ────────────────────────────────────────────────────────
 def get_session(user_id: str) -> dict:
@@ -144,9 +143,8 @@ def notify_admin_tnr(user_id: str, data: dict) -> None:
     msg = config.ADMIN_TNR_TEMPLATE.format(
         display_name=display_name,
         datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
-        feeding=data.get("feeding", "未回答"),
         location=data.get("location", "未回答"),
-        count=data.get("count", "未回答"),
+        detail=data.get("detail", "未回答"),
     )
     push(config.ADMIN_USER_ID, [text_msg(msg)])
 
@@ -179,14 +177,11 @@ def ask_info_feeder(reply_token: str) -> None:
 def ask_info_supplement(reply_token: str) -> None:
     reply(reply_token, [text_msg(config.INFO_ASK_SUPPLEMENT, quick_reply=quick_reply_buttons(*config.INFO_SUPPLEMENT_OPTIONS))])
 
-def ask_tnr_feeding(reply_token: str) -> None:
-    reply(reply_token, [text_msg(config.TNR_ASK_FEEDING, quick_reply=quick_reply_buttons(*config.TNR_FEEDING_OPTIONS))])
-
 def ask_tnr_location(reply_token: str) -> None:
     reply(reply_token, [text_msg(config.TNR_ASK_LOCATION, quick_reply=quick_reply_with_location())])
 
-def ask_tnr_count(reply_token: str) -> None:
-    reply(reply_token, [text_msg(config.TNR_ASK_COUNT, quick_reply=quick_reply_buttons(*config.TNR_COUNT_OPTIONS))])
+def ask_tnr_detail(reply_token: str) -> None:
+    reply(reply_token, [text_msg(config.TNR_ASK_DETAIL)])
 
 def complete_flow(reply_token: str, user_id: str, flow: str) -> None:
     data = get_data(user_id)
@@ -282,24 +277,19 @@ def handle_text(event):
     # ─── TNR相談フロー ──────────────────────────────────────────────────────────
     elif state == TNR_CONSENT:
         if text == "同意する":
-            set_state(user_id, TNR_FEEDING)
-            ask_tnr_feeding(token)
+            set_state(user_id, TNR_LOCATION)
+            ask_tnr_location(token)
         else:
             reset_session(user_id)
             reply(token, [text_msg(config.CANCEL_MESSAGE)])
 
-    elif state == TNR_FEEDING:
-        save_data(user_id, "feeding", text)
-        set_state(user_id, TNR_LOCATION)
-        ask_tnr_location(token)
-
     elif state == TNR_LOCATION:
         save_data(user_id, "location", text)
-        set_state(user_id, TNR_COUNT)
-        ask_tnr_count(token)
+        set_state(user_id, TNR_DETAIL)
+        ask_tnr_detail(token)
 
-    elif state == TNR_COUNT:
-        save_data(user_id, "count", text)
+    elif state == TNR_DETAIL:
+        save_data(user_id, "detail", text)
         complete_flow(token, user_id, "tnr")
 
     else:
@@ -349,8 +339,8 @@ def handle_location(event):
     elif state == TNR_LOCATION:
         save_data(user_id, "location", location_text)
         save_data(user_id, "location_type", "gps")
-        set_state(user_id, TNR_COUNT)
-        ask_tnr_count(token)
+        set_state(user_id, TNR_DETAIL)
+        ask_tnr_detail(token)
 
     else:
         reply(token, [text_msg("ありがとうございます。\nメニューから操作を選んでください🐱")])
