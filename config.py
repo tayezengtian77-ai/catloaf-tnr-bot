@@ -17,7 +17,7 @@ ACCESS_TOKEN = os.environ.get(
 
 # 管理者の LINE User ID（通知の送り先）
 # 取得方法: ボットに話しかけてサーバーログに表示される "user_id:" を確認してください
-ADMIN_USER_ID = os.environ.get("ADMIN_USER_ID", "")
+ADMIN_USER_ID = os.environ.get("ADMIN_USER_ID", "Uad47c684ec4b35fb22caf8d6d7a8b519")
 
 # ─── 共通メッセージ ────────────────────────────────────────────────────────────
 WELCOME_MESSAGE = (
