@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: catloaf-tnr-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 60
+    envVars:
+      - key: CHANNEL_SECRET
+        sync: false          # Renderダッシュボードで手動入力
+      - key: ACCESS_TOKEN
+        sync: false          # Renderダッシュボードで手動入力
+      - key: ADMIN_USER_ID
+        sync: false          # Renderダッシュボードで手動入力
