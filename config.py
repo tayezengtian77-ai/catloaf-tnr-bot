@@ -17,6 +17,12 @@ ACCESS_TOKEN = os.environ.get(
 # 管理者の LINE User ID
 ADMIN_USER_ID = os.environ.get("ADMIN_USER_ID", "Uad47c684ec4b35fb22caf8d6d7a8b519")
 
+# Google Apps Script Web App URL（マップ・スプレッドシート連携）
+GAS_URL = os.environ.get(
+    "GAS_URL",
+    "https://script.google.com/macros/s/AKfycbzOeCvJ8Ln1ytFZWcvxapfPY4zB9tZe8OM9ZJTF8AWVvD_xsuEnHdFMq3w1bV3OulWi/exec"
+)
+
 # ─── 共通メッセージ ────────────────────────────────────────────────────────────
 WELCOME_MESSAGE = (
     "キャットローフのTNR活動LINEへようこそ！🐱\n"

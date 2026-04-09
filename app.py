@@ -2,6 +2,8 @@
 キャットローフ TNR活動 LINE チャットボット
 """
 import logging
+import uuid
+import requests as http_requests
 from datetime import datetime
 from flask import Flask, request, abort
 
@@ -183,13 +185,62 @@ def ask_tnr_location(reply_token: str) -> None:
 def ask_tnr_detail(reply_token: str) -> None:
     reply(reply_token, [text_msg(config.TNR_ASK_DETAIL)])
 
+def send_to_gas(payload: dict) -> None:
+    """Google Apps Script（スプレッドシート＆マップ）にデータを送信"""
+    if not config.GAS_URL:
+        return
+    try:
+        http_requests.post(config.GAS_URL, json=payload, timeout=10)
+        logger.info("GAS送信完了")
+    except Exception as e:
+        logger.warning(f"GAS送信エラー: {e}")
+
 def complete_flow(reply_token: str, user_id: str, flow: str) -> None:
     data = get_data(user_id)
     reply(reply_token, [text_msg(config.COMPLETE_MESSAGE)])
+
     if flow == "info":
         notify_admin_info(user_id, data)
+        # スプレッドシート・マップに送信
+        loc = data.get("location", "")
+        lat = data.get("lat", "")
+        lng = data.get("lng", "")
+        notes = f"【時間帯】{data.get('timing','')}\n【餌やり】{data.get('feeder','')}\n【補足】{data.get('supplement','')}"
+        send_to_gas({
+            "id": str(uuid.uuid4())[:8],
+            "date": datetime.now().strftime("%Y/%m/%d %H:%M"),
+            "address": loc,
+            "lat": lat,
+            "lng": lng,
+            "catCount": data.get("count", ""),
+            "feeding": data.get("feeder", ""),
+            "cooperation": "",
+            "cost": "",
+            "notes": notes,
+            "reporter": get_display_name(user_id),
+            "photos": [],
+            "type": "野良猫情報"
+        })
     else:
         notify_admin_tnr(user_id, data)
+        # スプレッドシート・マップに送信
+        loc = data.get("location", "")
+        send_to_gas({
+            "id": str(uuid.uuid4())[:8],
+            "date": datetime.now().strftime("%Y/%m/%d %H:%M"),
+            "address": loc,
+            "lat": data.get("lat", ""),
+            "lng": data.get("lng", ""),
+            "catCount": "",
+            "feeding": "",
+            "cooperation": "",
+            "cost": "",
+            "notes": data.get("detail", ""),
+            "reporter": get_display_name(user_id),
+            "photos": [],
+            "type": "TNR相談"
+        })
+
     reset_session(user_id)
 
 # ─── Webhook エンドポイント ────────────────────────────────────────────────────
@@ -332,13 +383,15 @@ def handle_location(event):
 
     if state == INFO_LOCATION:
         save_data(user_id, "location", location_text)
-        save_data(user_id, "location_type", "gps")
+        save_data(user_id, "lat", loc.latitude)
+        save_data(user_id, "lng", loc.longitude)
         set_state(user_id, INFO_COUNT)
         ask_info_count(token)
 
     elif state == TNR_LOCATION:
         save_data(user_id, "location", location_text)
-        save_data(user_id, "location_type", "gps")
+        save_data(user_id, "lat", loc.latitude)
+        save_data(user_id, "lng", loc.longitude)
         set_state(user_id, TNR_DETAIL)
         ask_tnr_detail(token)
 
