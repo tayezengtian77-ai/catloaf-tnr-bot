@@ -17,8 +17,6 @@ from linebot.v3.messaging import (
     LocationAction,
     MessageAction,
     ReplyMessageRequest,
-    TemplateMessage,
-    ConfirmTemplate,
     TextMessage,
 )
 from linebot.v3.webhooks import (
@@ -26,7 +24,6 @@ from linebot.v3.webhooks import (
     ImageMessageContent,
     LocationMessageContent,
     MessageEvent,
-    PostbackEvent,
     TextMessageContent,
 )
 
@@ -41,20 +38,20 @@ line_config = Configuration(access_token=config.ACCESS_TOKEN)
 handler = WebhookHandler(config.CHANNEL_SECRET)
 
 # ─── セッション管理（インメモリ） ──────────────────────────────────────────────
-# キー: user_id, 値: {"state": str, "data": dict}
 sessions: dict[str, dict] = {}
 
 # ─── 状態定数 ──────────────────────────────────────────────────────────────────
-IDLE = "idle"
-INFO_PHOTO    = "info_photo"
-INFO_LOCATION = "info_location"
-INFO_COUNT    = "info_count"
-INFO_TIMING   = "info_timing"
-INFO_FEEDER   = "info_feeder"
-TNR_CONSENT   = "tnr_consent"
-TNR_FEEDING   = "tnr_feeding"
-TNR_LOCATION  = "tnr_location"
-TNR_COUNT     = "tnr_count"
+IDLE           = "idle"
+INFO_PHOTO     = "info_photo"       # 写真受付中（複数枚対応）
+INFO_LOCATION  = "info_location"
+INFO_COUNT     = "info_count"
+INFO_TIMING    = "info_timing"      # 自由テキスト入力
+INFO_FEEDER    = "info_feeder"
+INFO_SUPPLEMENT= "info_supplement"  # 補足入力
+TNR_CONSENT    = "tnr_consent"
+TNR_FEEDING    = "tnr_feeding"
+TNR_LOCATION   = "tnr_location"
+TNR_COUNT      = "tnr_count"
 
 # ─── セッションヘルパー ────────────────────────────────────────────────────────
 def get_session(user_id: str) -> dict:
@@ -104,7 +101,6 @@ def text_msg(text: str, quick_reply: QuickReply = None) -> TextMessage:
     return TextMessage(text=text, quick_reply=quick_reply)
 
 def quick_reply_buttons(*labels: str) -> QuickReply:
-    """テキスト送信ボタンの QuickReply を生成"""
     return QuickReply(
         items=[
             QuickReplyItem(action=MessageAction(label=lb, text=lb))
@@ -113,7 +109,6 @@ def quick_reply_buttons(*labels: str) -> QuickReply:
     )
 
 def quick_reply_with_location(*labels: str) -> QuickReply:
-    """位置情報ボタン付き QuickReply を生成"""
     items = [
         QuickReplyItem(action=MessageAction(label=lb, text=lb))
         for lb in labels
@@ -127,15 +122,18 @@ def notify_admin_info(user_id: str, data: dict) -> None:
         return
     display_name = get_display_name(user_id)
     photos = f"{data.get('photo_count', 0)}枚" if data.get("photo_count") else "なし"
-    location = data.get("location", "未回答")
+    supplement = data.get("supplement", "なし")
+    if supplement == "なし":
+        supplement = "なし"
     msg = config.ADMIN_INFO_TEMPLATE.format(
         display_name=display_name,
         datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
         photos=photos,
-        location=location,
+        location=data.get("location", "未回答"),
         count=data.get("count", "未回答"),
         timing=data.get("timing", "未回答"),
         feeder=data.get("feeder", "未回答"),
+        supplement=supplement,
     )
     push(config.ADMIN_USER_ID, [text_msg(msg)])
 
@@ -143,12 +141,11 @@ def notify_admin_tnr(user_id: str, data: dict) -> None:
     if not config.ADMIN_USER_ID:
         return
     display_name = get_display_name(user_id)
-    location = data.get("location", "未回答")
     msg = config.ADMIN_TNR_TEMPLATE.format(
         display_name=display_name,
         datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
         feeding=data.get("feeding", "未回答"),
-        location=location,
+        location=data.get("location", "未回答"),
         count=data.get("count", "未回答"),
     )
     push(config.ADMIN_USER_ID, [text_msg(msg)])
@@ -167,32 +164,29 @@ def start_tnr_flow(reply_token: str, user_id: str) -> None:
 
 # ─── 各ステップのメッセージ送信 ────────────────────────────────────────────────
 def ask_info_location(reply_token: str) -> None:
-    qr = quick_reply_with_location()
-    reply(reply_token, [text_msg(config.INFO_ASK_LOCATION, quick_reply=qr)])
+    reply(reply_token, [text_msg(config.INFO_ASK_LOCATION, quick_reply=quick_reply_with_location())])
 
 def ask_info_count(reply_token: str) -> None:
-    qr = quick_reply_buttons(*config.INFO_COUNT_OPTIONS)
-    reply(reply_token, [text_msg(config.INFO_ASK_COUNT, quick_reply=qr)])
+    reply(reply_token, [text_msg(config.INFO_ASK_COUNT, quick_reply=quick_reply_buttons(*config.INFO_COUNT_OPTIONS))])
 
 def ask_info_timing(reply_token: str) -> None:
-    qr = quick_reply_buttons(*config.INFO_TIMING_OPTIONS)
-    reply(reply_token, [text_msg(config.INFO_ASK_TIMING, quick_reply=qr)])
+    # 自由テキスト入力のためボタンなし
+    reply(reply_token, [text_msg(config.INFO_ASK_TIMING)])
 
 def ask_info_feeder(reply_token: str) -> None:
-    qr = quick_reply_buttons(*config.INFO_FEEDER_OPTIONS)
-    reply(reply_token, [text_msg(config.INFO_ASK_FEEDER, quick_reply=qr)])
+    reply(reply_token, [text_msg(config.INFO_ASK_FEEDER, quick_reply=quick_reply_buttons(*config.INFO_FEEDER_OPTIONS))])
+
+def ask_info_supplement(reply_token: str) -> None:
+    reply(reply_token, [text_msg(config.INFO_ASK_SUPPLEMENT, quick_reply=quick_reply_buttons(*config.INFO_SUPPLEMENT_OPTIONS))])
 
 def ask_tnr_feeding(reply_token: str) -> None:
-    qr = quick_reply_buttons(*config.TNR_FEEDING_OPTIONS)
-    reply(reply_token, [text_msg(config.TNR_ASK_FEEDING, quick_reply=qr)])
+    reply(reply_token, [text_msg(config.TNR_ASK_FEEDING, quick_reply=quick_reply_buttons(*config.TNR_FEEDING_OPTIONS))])
 
 def ask_tnr_location(reply_token: str) -> None:
-    qr = quick_reply_with_location()
-    reply(reply_token, [text_msg(config.TNR_ASK_LOCATION, quick_reply=qr)])
+    reply(reply_token, [text_msg(config.TNR_ASK_LOCATION, quick_reply=quick_reply_with_location())])
 
 def ask_tnr_count(reply_token: str) -> None:
-    qr = quick_reply_buttons(*config.TNR_COUNT_OPTIONS)
-    reply(reply_token, [text_msg(config.TNR_ASK_COUNT, quick_reply=qr)])
+    reply(reply_token, [text_msg(config.TNR_ASK_COUNT, quick_reply=quick_reply_buttons(*config.TNR_COUNT_OPTIONS))])
 
 def complete_flow(reply_token: str, user_id: str, flow: str) -> None:
     data = get_data(user_id)
@@ -233,15 +227,13 @@ def handle_text(event):
 
     logger.info(f"Text: user_id={user_id} state={state} text={text[:30]}")
 
-    # ─ フロー開始トリガー（リッチメニューのアクションと一致） ─
+    # ─ フロー開始トリガー ─
     if text in ("野良猫の情報を提供する", "情報提供"):
         start_info_flow(token, user_id)
         return
     if text in ("TNRの相談をしたい", "TNR相談"):
         start_tnr_flow(token, user_id)
         return
-
-    # ─ キャンセル ─
     if text == "キャンセル":
         reset_session(user_id)
         reply(token, [text_msg(config.CANCEL_MESSAGE)])
@@ -251,11 +243,17 @@ def handle_text(event):
     if state == INFO_PHOTO:
         if text == "スキップ":
             save_data(user_id, "photo_count", 0)
+            set_state(user_id, INFO_LOCATION)
+            ask_info_location(token)
+        elif text == config.INFO_PHOTO_DONE_OPTION:
+            # 「送り終わりました」ボタンが押された
+            set_state(user_id, INFO_LOCATION)
+            ask_info_location(token)
         else:
-            # テキストをメモ（写真代わり）
-            save_data(user_id, "memo", text)
-        set_state(user_id, INFO_LOCATION)
-        ask_info_location(token)
+            reply(token, [text_msg(
+                "写真を送るか、「スキップ」と入力してください📷",
+                quick_reply=quick_reply_buttons("スキップ")
+            )])
 
     elif state == INFO_LOCATION:
         save_data(user_id, "location", text)
@@ -274,6 +272,11 @@ def handle_text(event):
 
     elif state == INFO_FEEDER:
         save_data(user_id, "feeder", text)
+        set_state(user_id, INFO_SUPPLEMENT)
+        ask_info_supplement(token)
+
+    elif state == INFO_SUPPLEMENT:
+        save_data(user_id, "supplement", text)
         complete_flow(token, user_id, "info")
 
     # ─── TNR相談フロー ──────────────────────────────────────────────────────────
@@ -299,7 +302,6 @@ def handle_text(event):
         save_data(user_id, "count", text)
         complete_flow(token, user_id, "tnr")
 
-    # ─ 待機中 / 不明なテキスト ─
     else:
         reply(token, [text_msg(config.UNKNOWN_MESSAGE)])
 
@@ -311,24 +313,19 @@ def handle_image(event):
     token = event.reply_token
 
     if state == INFO_PHOTO:
-        # 複数枚に対応するためカウントを累積
         session = get_session(user_id)
         count = session["data"].get("photo_count", 0) + 1
         session["data"]["photo_count"] = count
         session["data"].setdefault("photo_ids", []).append(event.message.id)
 
-        # 最初の1枚目で次ステップへ誘導、2枚目以降は追加受付メッセージ
-        if count == 1:
-            set_state(user_id, INFO_LOCATION)
-            qr = quick_reply_with_location()
-            reply(token, [
-                text_msg(
-                    f"写真を受け取りました📷\n\n{config.INFO_ASK_LOCATION}",
-                    quick_reply=qr,
-                )
-            ])
-        else:
-            reply(token, [text_msg(f"写真 {count}枚目を受け取りました📷\n追加がなければ場所を入力してください。")])
+        # 何枚でも受け付け、「送り終わりました」ボタンを常に表示
+        qr = quick_reply_buttons(config.INFO_PHOTO_DONE_OPTION)
+        reply(token, [text_msg(
+            f"写真 {count}枚目を受け取りました📷\n"
+            "追加の写真があればそのまま送ってください。\n"
+            "送り終わったら下のボタンを押してください👇",
+            quick_reply=qr
+        )])
     else:
         reply(token, [text_msg("ありがとうございます。\nメニューから操作を選んでください🐱")])
 
