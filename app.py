@@ -387,8 +387,7 @@ def handle_text(event):
         save_data(user_id, "detail", text)
         complete_flow(token, user_id, "tnr")
 
-    else:
-        reply(token, [text_msg(config.UNKNOWN_MESSAGE)])
+    # else: フロー外のメッセージは無視（管理者と自由にやり取りできるよう）
 
 # ─── 画像メッセージ ────────────────────────────────────────────────────────────
 @handler.add(MessageEvent, message=ImageMessageContent)
@@ -411,8 +410,7 @@ def handle_image(event):
             "送り終わったら下のボタンを押してください👇",
             quick_reply=qr
         )])
-    else:
-        reply(token, [text_msg("ありがとうございます。\nメニューから操作を選んでください🐱")])
+    # else: フロー外は無視
 
 # ─── 位置情報メッセージ ────────────────────────────────────────────────────────
 @handler.add(MessageEvent, message=LocationMessageContent)
@@ -439,8 +437,7 @@ def handle_location(event):
         set_state(user_id, TNR_DETAIL)
         ask_tnr_detail(token)
 
-    else:
-        reply(token, [text_msg("ありがとうございます。\nメニューから操作を選んでください🐱")])
+    # else: フロー外は無視
 
 # ─── ヘルスチェック ────────────────────────────────────────────────────────────
 @app.route("/", methods=["GET"])
