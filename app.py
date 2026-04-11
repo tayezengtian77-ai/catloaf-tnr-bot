@@ -280,16 +280,38 @@ def handle_text(event):
 
     # ─── 管理者コマンド（/off・/on） ─────────────────────────────────────────
     if user_id == config.ADMIN_USER_ID:
-        if text.startswith("/off "):
-            target_id = text[5:].strip()
+        # 通知をそのままコピペしても動くよう "/off " を行中から検索
+        if "/off " in text:
+            target_id = text[text.index("/off ") + 5:].strip().split()[0]
             bot_off_users.add(target_id)
-            reply(token, [text_msg(f"✅ {target_id} のボットをオフにしました。\n/on {target_id} で元に戻せます。")])
+            reply(token, [text_msg(f"✅ ボットをオフにしました。\n対象: {target_id}\n\n元に戻すには:\n/on {target_id}")])
             return
-        if text.startswith("/on "):
-            target_id = text[4:].strip()
+        if "/on " in text:
+            target_id = text[text.index("/on ") + 4:].strip().split()[0]
             bot_off_users.discard(target_id)
-            reply(token, [text_msg(f"✅ {target_id} のボットをオンに戻しました。")])
+            reply(token, [text_msg(f"✅ ボットをオンに戻しました。\n対象: {target_id}")])
             return
+
+    # ─── ユーザー側からスタッフ直接相談モード ─────────────────────────────────
+    if text == "スタッフに相談":
+        bot_off_users.add(user_id)
+        display_name = get_display_name(user_id)
+        push(config.ADMIN_USER_ID, [text_msg(
+            f"💬【直接相談リクエスト】\n"
+            f"━━━━━━━━━━━━━━\n"
+            f"送信者: {display_name}\n"
+            f"ユーザーID: {user_id}\n"
+            f"━━━━━━━━━━━━━━\n"
+            f"ボットをオフにしました。\n"
+            f"LINE公式アカウント管理画面から返信してください。\n\n"
+            f"終了後: /on {user_id}"
+        )])
+        reply(token, [text_msg(
+            "スタッフに繋ぎます🐱\n\n"
+            "担当者からLINEでご連絡いたします。\n"
+            "しばらくお待ちください。"
+        )])
+        return
 
     # ─── ボットオフのユーザーはスルー ─────────────────────────────────────────
     if user_id in bot_off_users:
