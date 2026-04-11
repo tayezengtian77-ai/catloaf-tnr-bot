@@ -292,7 +292,7 @@ def handle_text(event):
         return
 
     # ─── ユーザー側からスタッフ直接相談モード ─────────────────────────────────
-    if text == "スタッフに相談":
+    if text == "スタッフに相談" and user_id != config.ADMIN_USER_ID:
         bot_off_users.add(user_id)
         display_name = get_display_name(user_id)
         push(config.ADMIN_USER_ID, [text_msg(
