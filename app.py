@@ -105,12 +105,12 @@ def text_msg(text: str, quick_reply: QuickReply = None) -> TextMessage:
     return TextMessage(text=text, quick_reply=quick_reply)
 
 def quick_reply_buttons(*labels: str) -> QuickReply:
-    return QuickReply(
-        items=[
-            QuickReplyItem(action=MessageAction(label=lb, text=lb))
-            for lb in labels
-        ]
-    )
+    items = [
+        QuickReplyItem(action=MessageAction(label=lb, text=lb))
+        for lb in labels
+    ]
+    items.append(QuickReplyItem(action=MessageAction(label="終了", text="終了")))
+    return QuickReply(items=items)
 
 def quick_reply_with_location(*labels: str) -> QuickReply:
     items = [
@@ -118,6 +118,7 @@ def quick_reply_with_location(*labels: str) -> QuickReply:
         for lb in labels
     ]
     items.append(QuickReplyItem(action=LocationAction(label="📍 位置情報を送る")))
+    items.append(QuickReplyItem(action=MessageAction(label="終了", text="終了")))
     return QuickReply(items=items)
 
 # ─── 管理者通知 ────────────────────────────────────────────────────────────────
@@ -175,8 +176,7 @@ def ask_info_count(reply_token: str) -> None:
     reply(reply_token, [text_msg(config.INFO_ASK_COUNT, quick_reply=quick_reply_buttons(*config.INFO_COUNT_OPTIONS))])
 
 def ask_info_timing(reply_token: str) -> None:
-    # 自由テキスト入力のためボタンなし
-    reply(reply_token, [text_msg(config.INFO_ASK_TIMING)])
+    reply(reply_token, [text_msg(config.INFO_ASK_TIMING, quick_reply=quick_reply_buttons())])
 
 def ask_info_feeder(reply_token: str) -> None:
     reply(reply_token, [text_msg(config.INFO_ASK_FEEDER, quick_reply=quick_reply_buttons(*config.INFO_FEEDER_OPTIONS))])
@@ -188,7 +188,7 @@ def ask_tnr_location(reply_token: str) -> None:
     reply(reply_token, [text_msg(config.TNR_ASK_LOCATION, quick_reply=quick_reply_with_location())])
 
 def ask_tnr_detail(reply_token: str) -> None:
-    reply(reply_token, [text_msg(config.TNR_ASK_DETAIL)])
+    reply(reply_token, [text_msg(config.TNR_ASK_DETAIL, quick_reply=quick_reply_buttons())])
 
 def send_to_gas(payload: dict) -> None:
     """Google Apps Script（スプレッドシート＆マップ）にデータを送信"""
@@ -324,7 +324,7 @@ def handle_text(event):
     if text in ("TNRの相談をしたい", "TNR相談"):
         start_tnr_flow(token, user_id)
         return
-    if text == "キャンセル":
+    if text in ("キャンセル", "終了"):
         reset_session(user_id)
         reply(token, [text_msg(config.CANCEL_MESSAGE)])
         return
