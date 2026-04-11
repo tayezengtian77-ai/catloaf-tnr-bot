@@ -279,18 +279,17 @@ def handle_text(event):
     logger.info(f"Text: user_id={user_id} state={state} text={text[:30]}")
 
     # ─── 管理者コマンド（/off・/on） ─────────────────────────────────────────
-    if user_id == config.ADMIN_USER_ID:
-        # 通知をそのままコピペしても動くよう "/off " を行中から検索
-        if "/off " in text:
-            target_id = text[text.index("/off ") + 5:].strip().split()[0]
-            bot_off_users.add(target_id)
-            reply(token, [text_msg(f"✅ ボットをオフにしました。\n対象: {target_id}\n\n元に戻すには:\n/on {target_id}")])
-            return
-        if "/on " in text:
-            target_id = text[text.index("/on ") + 4:].strip().split()[0]
-            bot_off_users.discard(target_id)
-            reply(token, [text_msg(f"✅ ボットをオンに戻しました。\n対象: {target_id}")])
-            return
+    # 通知をそのままコピペしても動くよう "/off " を行中から検索
+    if "/off " in text:
+        target_id = text[text.index("/off ") + 5:].strip().split()[0]
+        bot_off_users.add(target_id)
+        reply(token, [text_msg(f"✅ ボットをオフにしました。\n対象: {target_id}\n\n元に戻すには:\n/on {target_id}")])
+        return
+    if text.startswith("/on "):
+        target_id = text[4:].strip().split()[0]
+        bot_off_users.discard(target_id)
+        reply(token, [text_msg(f"✅ ボットをオンに戻しました。\n対象: {target_id}")])
+        return
 
     # ─── ユーザー側からスタッフ直接相談モード ─────────────────────────────────
     if text == "スタッフに相談":
