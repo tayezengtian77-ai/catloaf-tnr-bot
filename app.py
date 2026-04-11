@@ -42,6 +42,9 @@ handler = WebhookHandler(config.CHANNEL_SECRET)
 # ─── セッション管理（インメモリ） ──────────────────────────────────────────────
 sessions: dict[str, dict] = {}
 
+# ─── ボットオフユーザー管理 ───────────────────────────────────────────────────
+bot_off_users: set[str] = set()  # ボットをオフにしているユーザーIDのセット
+
 # ─── 状態定数 ──────────────────────────────────────────────────────────────────
 IDLE           = "idle"
 INFO_PHOTO     = "info_photo"       # 写真受付中（複数枚対応）
@@ -128,6 +131,7 @@ def notify_admin_info(user_id: str, data: dict) -> None:
         supplement = "なし"
     msg = config.ADMIN_INFO_TEMPLATE.format(
         display_name=display_name,
+        user_id=user_id,
         datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
         photos=photos,
         location=data.get("location", "未回答"),
@@ -144,6 +148,7 @@ def notify_admin_tnr(user_id: str, data: dict) -> None:
     display_name = get_display_name(user_id)
     msg = config.ADMIN_TNR_TEMPLATE.format(
         display_name=display_name,
+        user_id=user_id,
         datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
         location=data.get("location", "未回答"),
         detail=data.get("detail", "未回答"),
@@ -272,6 +277,24 @@ def handle_text(event):
     token = event.reply_token
 
     logger.info(f"Text: user_id={user_id} state={state} text={text[:30]}")
+
+    # ─── 管理者コマンド（/off・/on） ─────────────────────────────────────────
+    if user_id == config.ADMIN_USER_ID:
+        if text.startswith("/off "):
+            target_id = text[5:].strip()
+            bot_off_users.add(target_id)
+            reply(token, [text_msg(f"✅ {target_id} のボットをオフにしました。\n/on {target_id} で元に戻せます。")])
+            return
+        if text.startswith("/on "):
+            target_id = text[4:].strip()
+            bot_off_users.discard(target_id)
+            reply(token, [text_msg(f"✅ {target_id} のボットをオンに戻しました。")])
+            return
+
+    # ─── ボットオフのユーザーはスルー ─────────────────────────────────────────
+    if user_id in bot_off_users:
+        push(config.ADMIN_USER_ID, [text_msg(f"💬 {get_display_name(user_id)}（{user_id}）からメッセージ：\n{text}")])
+        return
 
     # ─ フロー開始トリガー ─
     if text in ("野良猫の情報を提供する", "情報提供"):

@@ -140,6 +140,7 @@ ADMIN_INFO_TEMPLATE = (
     "📋【野良猫 情報提供】\n"
     "━━━━━━━━━━━━━━\n"
     "送信者: {display_name}\n"
+    "ユーザーID: {user_id}\n"
     "日時: {datetime}\n"
     "━━━━━━━━━━━━━━\n"
     "📸 写真: {photos}\n"
@@ -148,16 +149,19 @@ ADMIN_INFO_TEMPLATE = (
     "🕐 時間帯: {timing}\n"
     "🍚 餌やり: {feeder}\n"
     "📝 補足: {supplement}\n"
-    "━━━━━━━━━━━━━━"
+    "━━━━━━━━━━━━━━\n"
+    "🔇 ボット停止: /off {user_id}"
 )
 
 ADMIN_TNR_TEMPLATE = (
     "📋【TNR相談】\n"
     "━━━━━━━━━━━━━━\n"
     "送信者: {display_name}\n"
+    "ユーザーID: {user_id}\n"
     "日時: {datetime}\n"
     "━━━━━━━━━━━━━━\n"
     "📍 場所: {location}\n"
     "📝 相談内容: {detail}\n"
-    "━━━━━━━━━━━━━━"
+    "━━━━━━━━━━━━━━\n"
+    "🔇 ボット停止: /off {user_id}"
 )
