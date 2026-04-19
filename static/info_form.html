@@ -101,29 +101,39 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .location-btn:active, .file-btn:active { background: var(--primary-light); }
+  .location-btn:active { background: var(--primary-light); }
   .location-status { font-size: 12px; color: var(--text-sub); margin-top: 6px; }
-  .file-input { display: none; }
-  .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .thumb {
-    position: relative;
-    width: 72px; height: 72px;
-    border-radius: 8px;
+  .photo-notice {
+    margin-bottom: 22px;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
     overflow: hidden;
-    border: 1px solid var(--border);
   }
-  .thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .thumb .remove {
-    position: absolute; top: 2px; right: 2px;
-    width: 20px; height: 20px;
-    background: rgba(0,0,0,0.6);
+  .photo-notice-header {
+    background: var(--primary);
     color: #fff;
-    border: none;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .photo-notice-body {
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  .photo-notice-body .step {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-bottom: 6px;
+  }
+  .photo-notice-body .step-num {
+    background: var(--primary);
+    color: #fff;
     border-radius: 50%;
-    font-size: 12px;
-    line-height: 1;
-    cursor: pointer;
+    width: 22px; height: 22px;
+    flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
   }
   .submit-btn {
     width: 100%;
@@ -139,15 +149,7 @@
     box-shadow: 0 4px 12px rgba(74,155,142,.25);
   }
   .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .video-notice {
-    margin-top: 16px;
-    padding: 12px 14px;
-    background: var(--primary-light);
-    border-radius: 10px;
-    font-size: 13px;
-    color: var(--primary-dark);
-    line-height: 1.5;
-  }
+  .video-notice { display: none; }
   .error-msg { color: var(--error); font-size: 12px; margin-top: 4px; display: none; }
   .error-msg.show { display: block; }
   .loading {
@@ -173,8 +175,29 @@
   }
   .thanks.show { display: block; }
   .thanks .icon { font-size: 48px; margin-bottom: 12px; }
-  .thanks h2 { color: var(--primary-dark); margin: 0 0 12px; }
-  .thanks p { color: var(--text-sub); font-size: 14px; }
+  .thanks h2 { color: var(--primary-dark); margin: 0 0 16px; }
+  .thanks-steps {
+    text-align: left;
+    background: var(--primary-light);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 12px;
+  }
+  .thanks-steps p { color: var(--primary-dark); font-size: 13px; font-weight: 700; margin: 0 0 10px; }
+  .thanks-step {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 10px; font-size: 14px; color: var(--text);
+  }
+  .thanks-step:last-child { margin-bottom: 0; }
+  .thanks-step-num {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
 </style>
 </head>
 <body>
@@ -228,33 +251,51 @@
     </div>
 
     <div class="field">
-      <div class="label">📷 写真 <span class="optional">任意</span></div>
-      <div class="hint">耳カットのない猫の写真があれば添付してください（複数可）</div>
-      <input type="file" id="photos" class="file-input" accept="image/*" multiple>
-      <button type="button" class="file-btn" id="photoBtn">📷 写真を選ぶ</button>
-      <div class="thumbs" id="thumbs"></div>
-    </div>
-
-    <div class="field">
       <div class="label">📝 その他・補足 <span class="optional">任意</span></div>
       <div class="hint">気になる点があればご自由にどうぞ</div>
       <textarea id="supplement" name="supplement" placeholder="例：子猫もいるようです"></textarea>
     </div>
 
-    <button type="submit" class="submit-btn" id="submitBtn">送信する</button>
-
-    <div class="video-notice">
-      🎥 <strong>動画を送りたい場合</strong><br>
-      送信後、LINEのトーク画面から直接お送りください。
+    <div class="photo-notice">
+      <div class="photo-notice-header">📷 写真・動画について</div>
+      <div class="photo-notice-body">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>このフォームを送信してください</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>送信後、この画面を閉じる</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div><strong>LINEのトーク画面に戻って</strong><br>写真・動画を直接送ってください📤</div>
+        </div>
+      </div>
     </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">送信する</button>
   </form>
 </div>
 
 <div class="thanks" id="thanks">
-  <div class="icon">🐾</div>
-  <h2>ご報告ありがとうございます</h2>
-  <p>内容を確認後、順次対応させていただきます。<br>
-  動画を送りたい場合は、このトーク画面から<br>直接お送りください。</p>
+  <div class="icon">✅</div>
+  <h2>送信完了しました！</h2>
+  <div class="thanks-steps">
+    <p>📷 写真・動画がある場合はこちら</p>
+    <div class="thanks-step">
+      <div class="thanks-step-num">1</div>
+      <div>この画面を閉じる<br><span style="font-size:12px;color:#636E72">（右上の × または戻るボタン）</span></div>
+    </div>
+    <div class="thanks-step">
+      <div class="thanks-step-num">2</div>
+      <div>LINEのトーク画面に戻る</div>
+    </div>
+    <div class="thanks-step">
+      <div class="thanks-step-num">3</div>
+      <div><strong>写真・動画をそのまま送信</strong><br><span style="font-size:12px;color:#636E72">複数枚まとめて送ってOKです</span></div>
+    </div>
+  </div>
 </div>
 
 <div class="loading" id="loading">
@@ -266,7 +307,6 @@
   let userId = null;
   let displayName = "";
   let liffReady = false;
-  let photoFiles = [];
 
   // LIFF init
   async function initLiff() {
@@ -328,43 +368,6 @@
     }, { enableHighAccuracy: true, timeout: 10000 });
   });
 
-  // Photo upload
-  document.getElementById('photoBtn').addEventListener('click', () => {
-    document.getElementById('photos').click();
-  });
-  document.getElementById('photos').addEventListener('change', (e) => {
-    const files = Array.from(e.target.files);
-    files.forEach(f => photoFiles.push(f));
-    renderThumbs();
-  });
-  function renderThumbs() {
-    const box = document.getElementById('thumbs');
-    box.innerHTML = '';
-    photoFiles.forEach((f, i) => {
-      const url = URL.createObjectURL(f);
-      const div = document.createElement('div');
-      div.className = 'thumb';
-      div.innerHTML = `<img src="${url}"><button type="button" class="remove" data-i="${i}">×</button>`;
-      box.appendChild(div);
-    });
-    box.querySelectorAll('.remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        photoFiles.splice(+btn.dataset.i, 1);
-        renderThumbs();
-      });
-    });
-  }
-
-  // File → base64
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
   // Submit
   document.getElementById('infoForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -385,15 +388,6 @@
     document.getElementById('loading').classList.add('show');
 
     try {
-      const photos = [];
-      for (const f of photoFiles) {
-        photos.push({
-          name: f.name,
-          type: f.type,
-          data: await fileToBase64(f)
-        });
-      }
-
       const payload = {
         userId: userId,
         displayName: displayName,
@@ -404,7 +398,7 @@
         timing: timing,
         feeder: feeder.value,
         supplement: document.getElementById('supplement').value.trim(),
-        photos: photos
+        photos: []
       };
 
       const res = await fetch('/submit', {
