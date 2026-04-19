@@ -265,16 +265,26 @@
 <script>
   let userId = null;
   let displayName = "";
+  let liffReady = false;
   let photoFiles = [];
 
   // LIFF init
   async function initLiff() {
     try {
-      await liff.init({ liffId: window.LIFF_ID || "" });
-      if (!liff.isLoggedIn()) { liff.login(); return; }
+      if (!window.LIFF_ID) {
+        console.warn("LIFF_ID not set");
+        return;
+      }
+      await liff.init({ liffId: window.LIFF_ID });
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: window.location.href });
+        return;
+      }
       const profile = await liff.getProfile();
       userId = profile.userId;
       displayName = profile.displayName;
+      liffReady = true;
+      console.log("LIFF ready:", displayName, userId);
     } catch (e) {
       console.warn("LIFF init failed (may be running outside LINE):", e);
     }

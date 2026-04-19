@@ -1,11 +1,8 @@
 """
 キャットローフ TNR活動 LINE チャットボット
 """
-import base64
 import logging
 import os
-import uuid
-import requests as http_requests
 from datetime import datetime
 from flask import Flask, request, abort, jsonify, send_from_directory
 
@@ -192,62 +189,13 @@ def ask_tnr_location(reply_token: str) -> None:
 def ask_tnr_detail(reply_token: str) -> None:
     reply(reply_token, [text_msg(config.TNR_ASK_DETAIL, quick_reply=quick_reply_buttons())])
 
-def send_to_gas(payload: dict) -> None:
-    """Google Apps Script（スプレッドシート＆マップ）にデータを送信"""
-    if not config.GAS_URL:
-        return
-    try:
-        http_requests.post(config.GAS_URL, json=payload, timeout=10)
-        logger.info("GAS送信完了")
-    except Exception as e:
-        logger.warning(f"GAS送信エラー: {e}")
-
 def complete_flow(reply_token: str, user_id: str, flow: str) -> None:
     data = get_data(user_id)
     reply(reply_token, [text_msg(config.COMPLETE_MESSAGE)])
-
     if flow == "info":
         notify_admin_info(user_id, data)
-        # スプレッドシート・マップに送信
-        loc = data.get("location", "")
-        lat = data.get("lat", "")
-        lng = data.get("lng", "")
-        notes = f"【時間帯】{data.get('timing','')}\n【餌やり】{data.get('feeder','')}\n【補足】{data.get('supplement','')}"
-        send_to_gas({
-            "id": str(uuid.uuid4())[:8],
-            "date": datetime.now().strftime("%Y/%m/%d %H:%M"),
-            "address": loc,
-            "lat": lat,
-            "lng": lng,
-            "catCount": data.get("count", ""),
-            "feeding": data.get("feeder", ""),
-            "cooperation": "",
-            "cost": "",
-            "notes": notes,
-            "reporter": get_display_name(user_id),
-            "photos": [],
-            "type": "野良猫情報"
-        })
     else:
         notify_admin_tnr(user_id, data)
-        # スプレッドシート・マップに送信
-        loc = data.get("location", "")
-        send_to_gas({
-            "id": str(uuid.uuid4())[:8],
-            "date": datetime.now().strftime("%Y/%m/%d %H:%M"),
-            "address": loc,
-            "lat": data.get("lat", ""),
-            "lng": data.get("lng", ""),
-            "catCount": "",
-            "feeding": "",
-            "cooperation": "",
-            "cost": "",
-            "notes": data.get("detail", ""),
-            "reporter": get_display_name(user_id),
-            "photos": [],
-            "type": "TNR相談"
-        })
-
     reset_session(user_id)
 
 # ─── Webhook エンドポイント ────────────────────────────────────────────────────
@@ -472,26 +420,30 @@ def serve_static(filename):
 def submit_form():
     try:
         payload = request.get_json(force=True, silent=True) or {}
-        user_id = payload.get("userId") or ""
-        display_name = payload.get("displayName") or get_display_name(user_id) if user_id else "不明"
+        user_id = (payload.get("userId") or "").strip()
+        display_name_raw = (payload.get("displayName") or "").strip()
+        if display_name_raw:
+            display_name = display_name_raw
+        elif user_id:
+            display_name = get_display_name(user_id)
+        else:
+            display_name = "不明（LIFFログイン未完了）"
 
         location = payload.get("location", "").strip()
-        lat = payload.get("lat", "")
-        lng = payload.get("lng", "")
         count = payload.get("count", "")
         timing = payload.get("timing", "").strip()
         feeder = payload.get("feeder", "")
         supplement = payload.get("supplement", "").strip() or "なし"
         photos = payload.get("photos", []) or []
-
         photo_count = len(photos)
-        logger.info(f"Form submit: user={user_id} photos={photo_count}")
 
-        # 管理者通知
+        logger.info(f"Form submit: user_id={user_id} name={display_name} photos={photo_count} loc={location[:30]}")
+
+        # ─── 管理者通知（最優先） ─────────────────────────────────────────
         if config.ADMIN_USER_ID:
             msg = config.ADMIN_INFO_TEMPLATE.format(
                 display_name=display_name,
-                user_id=user_id,
+                user_id=user_id or "不明",
                 datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
                 photos=f"{photo_count}枚" if photo_count else "なし",
                 location=location or "未入力",
@@ -502,44 +454,18 @@ def submit_form():
             )
             try:
                 push(config.ADMIN_USER_ID, [text_msg(msg)])
+                logger.info("admin push OK")
             except Exception as e:
                 logger.warning(f"admin push failed: {e}")
+        else:
+            logger.warning("ADMIN_USER_ID not set")
 
-            # 写真も管理者に送る（base64 → ImageMessage で送るには公開URLが必要なので、とりあえず情報のみ）
-            # 添付写真はフォーム送信者のトークに残らないため、写真ありの場合はユーザーにLINEでの再送を促す
-            # 将来的には画像を保存してURL化する実装に拡張可能
-
-        # ユーザー自身にも完了メッセージ（任意）
+        # ユーザー自身にも完了メッセージ（任意・LIFFログイン時のみ）
         if user_id:
             try:
                 push(user_id, [text_msg(config.COMPLETE_MESSAGE)])
             except Exception as e:
                 logger.warning(f"user push failed: {e}")
-
-        # GAS（スプレッドシート＆マップ）へ送信
-        notes = f"【時間帯】{timing}\n【餌やり】{feeder}\n【補足】{supplement}"
-        photos_payload = []
-        for p in photos:
-            photos_payload.append({
-                "name": p.get("name", "photo.jpg"),
-                "type": p.get("type", "image/jpeg"),
-                "data": p.get("data", ""),
-            })
-        send_to_gas({
-            "id": str(uuid.uuid4())[:8],
-            "date": datetime.now().strftime("%Y/%m/%d %H:%M"),
-            "address": location,
-            "lat": lat,
-            "lng": lng,
-            "catCount": count,
-            "feeding": feeder,
-            "cooperation": "",
-            "cost": "",
-            "notes": notes,
-            "reporter": display_name,
-            "photos": photos_payload,
-            "type": "野良猫情報"
-        })
 
         return jsonify({"ok": True})
     except Exception as e:
