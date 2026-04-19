@@ -144,8 +144,6 @@ TNR_CONSENT_OPTIONS = ["同意する", "キャンセル"]
 ADMIN_INFO_TEMPLATE = (
     "📋【野良猫 情報提供】\n"
     "━━━━━━━━━━━━━━\n"
-    "送信者: {display_name}\n"
-    "ユーザーID: {user_id}\n"
     "日時: {datetime}\n"
     "━━━━━━━━━━━━━━\n"
     "📸 写真: {photos}\n"
@@ -155,7 +153,7 @@ ADMIN_INFO_TEMPLATE = (
     "🍚 餌やり: {feeder}\n"
     "📝 補足: {supplement}\n"
     "━━━━━━━━━━━━━━\n"
-    "🔇 ボット停止: /off {user_id}"
+    "送信者LINEで確認してください"
 )
 
 ADMIN_TNR_TEMPLATE = (

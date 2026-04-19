@@ -124,14 +124,9 @@ def quick_reply_with_location(*labels: str) -> QuickReply:
 def notify_admin_info(user_id: str, data: dict) -> None:
     if not config.ADMIN_USER_ID:
         return
-    display_name = get_display_name(user_id)
     photos = f"{data.get('photo_count', 0)}枚" if data.get("photo_count") else "なし"
-    supplement = data.get("supplement", "なし")
-    if supplement == "なし":
-        supplement = "なし"
+    supplement = data.get("supplement", "なし") or "なし"
     msg = config.ADMIN_INFO_TEMPLATE.format(
-        display_name=display_name,
-        user_id=user_id,
         datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
         photos=photos,
         location=data.get("location", "未回答"),
@@ -442,8 +437,6 @@ def submit_form():
         # ─── 管理者通知（最優先） ─────────────────────────────────────────
         if config.ADMIN_USER_ID:
             msg = config.ADMIN_INFO_TEMPLATE.format(
-                display_name=display_name,
-                user_id=user_id or "不明",
                 datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
                 photos=f"{photo_count}枚" if photo_count else "なし",
                 location=location or "未入力",
