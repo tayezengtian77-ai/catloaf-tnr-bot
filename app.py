@@ -1,11 +1,13 @@
 """
 キャットローフ TNR活動 LINE チャットボット
 """
+import base64
 import logging
+import os
 import uuid
 import requests as http_requests
 from datetime import datetime
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify, send_from_directory
 
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
@@ -319,7 +321,17 @@ def handle_text(event):
 
     # ─ フロー開始トリガー ─
     if text in ("野良猫の情報を提供する", "情報提供"):
-        start_info_flow(token, user_id)
+        # LIFF フォームが設定されていればフォームへ誘導、なければステップ式フロー
+        if config.LIFF_URL:
+            reply(token, [text_msg(
+                "野良猫の情報提供ありがとうございます🐱\n\n"
+                "下のリンクからフォームを開いて、\n"
+                "1画面でまとめて入力してください📝\n\n"
+                f"👉 {config.LIFF_URL}\n\n"
+                "※ 動画を送りたい場合は、送信後このトーク画面から直接お送りください🎥"
+            )])
+        else:
+            start_info_flow(token, user_id)
         return
     if text in ("TNRの相談をしたい", "TNR相談"):
         start_tnr_flow(token, user_id)
@@ -438,6 +450,101 @@ def handle_location(event):
         ask_tnr_detail(token)
 
     # else: フロー外は無視
+
+# ─── LIFF フォーム配信 ─────────────────────────────────────────────────────────
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+
+@app.route("/form", methods=["GET"])
+def serve_form():
+    """LIFF ID を埋め込んで HTML を返す"""
+    html_path = os.path.join(STATIC_DIR, "info_form.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("__LIFF_ID__", config.LIFF_ID or "")
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+@app.route("/static/<path:filename>", methods=["GET"])
+def serve_static(filename):
+    return send_from_directory(STATIC_DIR, filename)
+
+# ─── フォーム送信エンドポイント ────────────────────────────────────────────────
+@app.route("/submit", methods=["POST"])
+def submit_form():
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        user_id = payload.get("userId") or ""
+        display_name = payload.get("displayName") or get_display_name(user_id) if user_id else "不明"
+
+        location = payload.get("location", "").strip()
+        lat = payload.get("lat", "")
+        lng = payload.get("lng", "")
+        count = payload.get("count", "")
+        timing = payload.get("timing", "").strip()
+        feeder = payload.get("feeder", "")
+        supplement = payload.get("supplement", "").strip() or "なし"
+        photos = payload.get("photos", []) or []
+
+        photo_count = len(photos)
+        logger.info(f"Form submit: user={user_id} photos={photo_count}")
+
+        # 管理者通知
+        if config.ADMIN_USER_ID:
+            msg = config.ADMIN_INFO_TEMPLATE.format(
+                display_name=display_name,
+                user_id=user_id,
+                datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
+                photos=f"{photo_count}枚" if photo_count else "なし",
+                location=location or "未入力",
+                count=count or "未入力",
+                timing=timing or "未入力",
+                feeder=feeder or "未入力",
+                supplement=supplement,
+            )
+            try:
+                push(config.ADMIN_USER_ID, [text_msg(msg)])
+            except Exception as e:
+                logger.warning(f"admin push failed: {e}")
+
+            # 写真も管理者に送る（base64 → ImageMessage で送るには公開URLが必要なので、とりあえず情報のみ）
+            # 添付写真はフォーム送信者のトークに残らないため、写真ありの場合はユーザーにLINEでの再送を促す
+            # 将来的には画像を保存してURL化する実装に拡張可能
+
+        # ユーザー自身にも完了メッセージ（任意）
+        if user_id:
+            try:
+                push(user_id, [text_msg(config.COMPLETE_MESSAGE)])
+            except Exception as e:
+                logger.warning(f"user push failed: {e}")
+
+        # GAS（スプレッドシート＆マップ）へ送信
+        notes = f"【時間帯】{timing}\n【餌やり】{feeder}\n【補足】{supplement}"
+        photos_payload = []
+        for p in photos:
+            photos_payload.append({
+                "name": p.get("name", "photo.jpg"),
+                "type": p.get("type", "image/jpeg"),
+                "data": p.get("data", ""),
+            })
+        send_to_gas({
+            "id": str(uuid.uuid4())[:8],
+            "date": datetime.now().strftime("%Y/%m/%d %H:%M"),
+            "address": location,
+            "lat": lat,
+            "lng": lng,
+            "catCount": count,
+            "feeding": feeder,
+            "cooperation": "",
+            "cost": "",
+            "notes": notes,
+            "reporter": display_name,
+            "photos": photos_payload,
+            "type": "野良猫情報"
+        })
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.exception(f"submit error: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # ─── ヘルスチェック ────────────────────────────────────────────────────────────
 @app.route("/", methods=["GET"])

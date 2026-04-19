@@ -23,6 +23,11 @@ GAS_URL = os.environ.get(
     "https://script.google.com/macros/s/AKfycbzOeCvJ8Ln1ytFZWcvxapfPY4zB9tZe8OM9ZJTF8AWVvD_xsuEnHdFMq3w1bV3OulWi/exec"
 )
 
+# LIFF ID（LINE Developers で発行。例: 2000000000-aBcDeFgH）
+LIFF_ID = os.environ.get("LIFF_ID", "")
+# LIFF URL（ユーザーに案内するリンク）
+LIFF_URL = f"https://liff.line.me/{LIFF_ID}" if LIFF_ID else ""
+
 # ─── 共通メッセージ ────────────────────────────────────────────────────────────
 WELCOME_MESSAGE = (
     "キャットローフのTNR活動LINEへようこそ！🐱\n"

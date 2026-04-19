@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>野良猫 情報提供フォーム</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --primary: #4A9B8E;
+    --primary-dark: #3D8B7A;
+    --primary-light: #E8F4F2;
+    --text: #2D3436;
+    --text-sub: #636E72;
+    --border: #DFE6E9;
+    --error: #E17055;
+    --bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #fff;
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .header h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+  .header p { margin: 0; font-size: 13px; opacity: 0.9; }
+  .container { padding: 20px 18px 40px; max-width: 520px; margin: 0 auto; }
+  .field { margin-bottom: 22px; }
+  .label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 15px; font-weight: 600; margin-bottom: 8px;
+  }
+  .required {
+    font-size: 11px;
+    background: var(--primary);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+  .optional {
+    font-size: 11px;
+    background: #B2BEC3;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+  .hint { font-size: 12px; color: var(--text-sub); margin: -4px 0 8px; }
+  input[type="text"], textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #FAFBFC;
+    transition: border-color .2s, background .2s;
+  }
+  input[type="text"]:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  .radio-group { display: flex; flex-direction: column; gap: 8px; }
+  .radio-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: #FAFBFC;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .radio-option input { accent-color: var(--primary); width: 18px; height: 18px; }
+  .radio-option.checked {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-weight: 600;
+  }
+  .location-btn, .file-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: #fff;
+    border: 1.5px solid var(--primary);
+    color: var(--primary-dark);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .location-btn:active, .file-btn:active { background: var(--primary-light); }
+  .location-status { font-size: 12px; color: var(--text-sub); margin-top: 6px; }
+  .file-input { display: none; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .thumb {
+    position: relative;
+    width: 72px; height: 72px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb .remove {
+    position: absolute; top: 2px; right: 2px;
+    width: 20px; height: 20px;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .submit-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(74,155,142,.25);
+  }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .video-notice {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: var(--primary-light);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--primary-dark);
+    line-height: 1.5;
+  }
+  .error-msg { color: var(--error); font-size: 12px; margin-top: 4px; display: none; }
+  .error-msg.show { display: block; }
+  .loading {
+    position: fixed; inset: 0;
+    background: rgba(255,255,255,0.9);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000;
+    flex-direction: column; gap: 12px;
+  }
+  .loading.show { display: flex; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--primary-light);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .thanks {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .thanks.show { display: block; }
+  .thanks .icon { font-size: 48px; margin-bottom: 12px; }
+  .thanks h2 { color: var(--primary-dark); margin: 0 0 12px; }
+  .thanks p { color: var(--text-sub); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🐱 野良猫 情報提供</h1>
+  <p>キャットローフ TNR活動</p>
+</div>
+
+<div class="container" id="formContainer">
+  <form id="infoForm">
+
+    <div class="field">
+      <div class="label">📍 場所 <span class="required">必須</span></div>
+      <div class="hint">住所や目印を入力、または現在地ボタンをご利用ください</div>
+      <input type="text" id="location" name="location" placeholder="例：高松市中央町〇〇付近" required>
+      <button type="button" class="location-btn" id="locationBtn">
+        📡 現在地から取得
+      </button>
+      <div class="location-status" id="locationStatus"></div>
+      <div class="error-msg" id="locationError">場所を入力してください</div>
+    </div>
+
+    <div class="field">
+      <div class="label">🐱 何匹いましたか？ <span class="required">必須</span></div>
+      <div class="radio-group" id="countGroup">
+        <label class="radio-option"><input type="radio" name="count" value="1匹">1匹</label>
+        <label class="radio-option"><input type="radio" name="count" value="2〜5匹">2〜5匹</label>
+        <label class="radio-option"><input type="radio" name="count" value="5匹以上">5匹以上</label>
+        <label class="radio-option"><input type="radio" name="count" value="わからない">わからない</label>
+      </div>
+      <div class="error-msg" id="countError">選択してください</div>
+    </div>
+
+    <div class="field">
+      <div class="label">🕐 見かけた時間帯 <span class="required">必須</span></div>
+      <div class="hint">例：朝7時頃、夕方17〜18時頃 など</div>
+      <input type="text" id="timing" name="timing" placeholder="例：夕方17時頃" required>
+      <div class="error-msg" id="timingError">入力してください</div>
+    </div>
+
+    <div class="field">
+      <div class="label">🍚 ご飯をあげている人はいますか？ <span class="required">必須</span></div>
+      <div class="radio-group" id="feederGroup">
+        <label class="radio-option"><input type="radio" name="feeder" value="自分があげている">自分があげている</label>
+        <label class="radio-option"><input type="radio" name="feeder" value="あげている人を知っている">あげている人を知っている</label>
+        <label class="radio-option"><input type="radio" name="feeder" value="分からない">分からない</label>
+        <label class="radio-option"><input type="radio" name="feeder" value="いない">いない</label>
+      </div>
+      <div class="error-msg" id="feederError">選択してください</div>
+    </div>
+
+    <div class="field">
+      <div class="label">📷 写真 <span class="optional">任意</span></div>
+      <div class="hint">耳カットのない猫の写真があれば添付してください（複数可）</div>
+      <input type="file" id="photos" class="file-input" accept="image/*" multiple>
+      <button type="button" class="file-btn" id="photoBtn">📷 写真を選ぶ</button>
+      <div class="thumbs" id="thumbs"></div>
+    </div>
+
+    <div class="field">
+      <div class="label">📝 その他・補足 <span class="optional">任意</span></div>
+      <div class="hint">気になる点があればご自由にどうぞ</div>
+      <textarea id="supplement" name="supplement" placeholder="例：子猫もいるようです"></textarea>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">送信する</button>
+
+    <div class="video-notice">
+      🎥 <strong>動画を送りたい場合</strong><br>
+      送信後、LINEのトーク画面から直接お送りください。
+    </div>
+  </form>
+</div>
+
+<div class="thanks" id="thanks">
+  <div class="icon">🐾</div>
+  <h2>ご報告ありがとうございます</h2>
+  <p>内容を確認後、順次対応させていただきます。<br>
+  動画を送りたい場合は、このトーク画面から<br>直接お送りください。</p>
+</div>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div style="color: var(--primary-dark); font-weight: 600;">送信中...</div>
+</div>
+
+<script>
+  let userId = null;
+  let displayName = "";
+  let photoFiles = [];
+
+  // LIFF init
+  async function initLiff() {
+    try {
+      await liff.init({ liffId: window.LIFF_ID || "" });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+      displayName = profile.displayName;
+    } catch (e) {
+      console.warn("LIFF init failed (may be running outside LINE):", e);
+    }
+  }
+  initLiff();
+
+  // Radio visual feedback
+  document.querySelectorAll('.radio-group').forEach(group => {
+    group.addEventListener('change', () => {
+      group.querySelectorAll('.radio-option').forEach(opt => {
+        opt.classList.toggle('checked', opt.querySelector('input').checked);
+      });
+    });
+  });
+
+  // Location button
+  document.getElementById('locationBtn').addEventListener('click', () => {
+    const status = document.getElementById('locationStatus');
+    if (!navigator.geolocation) {
+      status.textContent = 'この端末では位置情報が使えません';
+      return;
+    }
+    status.textContent = '取得中...';
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ja`);
+        const data = await res.json();
+        const addr = data.display_name || `${lat},${lng}`;
+        document.getElementById('location').value = addr;
+        status.textContent = `✓ 位置情報を取得しました (${lat}, ${lng})`;
+        document.getElementById('location').dataset.lat = lat;
+        document.getElementById('location').dataset.lng = lng;
+      } catch (e) {
+        document.getElementById('location').value = `${lat}, ${lng}`;
+        status.textContent = '✓ 座標を取得しました';
+      }
+    }, (err) => {
+      status.textContent = '位置情報の取得に失敗しました。手入力してください';
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  });
+
+  // Photo upload
+  document.getElementById('photoBtn').addEventListener('click', () => {
+    document.getElementById('photos').click();
+  });
+  document.getElementById('photos').addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(f => photoFiles.push(f));
+    renderThumbs();
+  });
+  function renderThumbs() {
+    const box = document.getElementById('thumbs');
+    box.innerHTML = '';
+    photoFiles.forEach((f, i) => {
+      const url = URL.createObjectURL(f);
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      div.innerHTML = `<img src="${url}"><button type="button" class="remove" data-i="${i}">×</button>`;
+      box.appendChild(div);
+    });
+    box.querySelectorAll('.remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        photoFiles.splice(+btn.dataset.i, 1);
+        renderThumbs();
+      });
+    });
+  }
+
+  // File → base64
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Submit
+  document.getElementById('infoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // validation
+    const loc = document.getElementById('location').value.trim();
+    const count = document.querySelector('input[name="count"]:checked');
+    const timing = document.getElementById('timing').value.trim();
+    const feeder = document.querySelector('input[name="feeder"]:checked');
+
+    let ok = true;
+    document.getElementById('locationError').classList.toggle('show', !loc); if (!loc) ok = false;
+    document.getElementById('countError').classList.toggle('show', !count); if (!count) ok = false;
+    document.getElementById('timingError').classList.toggle('show', !timing); if (!timing) ok = false;
+    document.getElementById('feederError').classList.toggle('show', !feeder); if (!feeder) ok = false;
+    if (!ok) return;
+
+    document.getElementById('loading').classList.add('show');
+
+    try {
+      const photos = [];
+      for (const f of photoFiles) {
+        photos.push({
+          name: f.name,
+          type: f.type,
+          data: await fileToBase64(f)
+        });
+      }
+
+      const payload = {
+        userId: userId,
+        displayName: displayName,
+        location: loc,
+        lat: document.getElementById('location').dataset.lat || "",
+        lng: document.getElementById('location').dataset.lng || "",
+        count: count.value,
+        timing: timing,
+        feeder: feeder.value,
+        supplement: document.getElementById('supplement').value.trim(),
+        photos: photos
+      };
+
+      const res = await fetch('/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('送信に失敗しました');
+
+      document.getElementById('formContainer').style.display = 'none';
+      document.getElementById('thanks').classList.add('show');
+      setTimeout(() => { if (typeof liff !== 'undefined' && liff.closeWindow) liff.closeWindow(); }, 3500);
+    } catch (err) {
+      alert('送信に失敗しました。時間をおいて再度お試しください。\n' + err.message);
+    } finally {
+      document.getElementById('loading').classList.remove('show');
+    }
+  });
+</script>
+
+<!-- LIFF ID は app.py で差し込まれます -->
+<script>window.LIFF_ID = "__LIFF_ID__";</script>
+
+</body>
+</html>
