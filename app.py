@@ -237,7 +237,15 @@ def handle_text(event):
         return
 
     # ─── 個別相談モード ────────────────────────────────────────────────────────
-    if text in ("個別に相談したい", "スタッフに相談") and user_id != config.ADMIN_USER_ID:
+    if text in ("個別に相談したい", "スタッフに相談"):
+        if user_id == config.ADMIN_USER_ID:
+            # 管理者自身が押した場合はテスト用メッセージを返す
+            reply(token, [text_msg(
+                "【管理者確認】\n"
+                "このボタンはユーザーが押すと個別相談モードになります。\n"
+                "ユーザーからのリクエスト時は自動返信が届き、ボットがオフになります。"
+            )])
+            return
         bot_off_users.add(user_id)
         display_name = get_display_name(user_id)
         push(config.ADMIN_USER_ID, [text_msg(
