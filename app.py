@@ -236,12 +236,12 @@ def handle_text(event):
         reply(token, [text_msg(f"✅ ボットをオンに戻しました。\n対象: {target_id}")])
         return
 
-    # ─── ユーザー側からスタッフ直接相談モード ─────────────────────────────────
-    if text == "スタッフに相談" and user_id != config.ADMIN_USER_ID:
+    # ─── 個別相談モード ────────────────────────────────────────────────────────
+    if text in ("個別に相談したい", "スタッフに相談") and user_id != config.ADMIN_USER_ID:
         bot_off_users.add(user_id)
         display_name = get_display_name(user_id)
         push(config.ADMIN_USER_ID, [text_msg(
-            f"💬【直接相談リクエスト】\n"
+            f"💬【個別相談リクエスト】\n"
             f"━━━━━━━━━━━━━━\n"
             f"送信者: {display_name}\n"
             f"ユーザーID: {user_id}\n"
@@ -250,11 +250,7 @@ def handle_text(event):
             f"LINE公式アカウント管理画面から返信してください。\n\n"
             f"終了後: /on {user_id}"
         )])
-        reply(token, [text_msg(
-            "スタッフに繋ぎます🐱\n\n"
-            "担当者からLINEでご連絡いたします。\n"
-            "しばらくお待ちください。"
-        )])
+        reply(token, [text_msg(config.CONSULT_AUTO_REPLY)])
         return
 
     # ─── ボットオフのユーザーはスルー ─────────────────────────────────────────
@@ -263,23 +259,18 @@ def handle_text(event):
         return
 
     # ─ フロー開始トリガー ─
-    if text in ("野良猫の情報を提供する", "情報提供"):
+    if text in ("野良猫の情報を提供する", "情報提供", "猫の情報・TNR相談", "TNR相談", "TNRの相談をしたい"):
         # LIFF フォームが設定されていればフォームへ誘導、なければステップ式フロー
         if config.LIFF_URL:
             reply(token, [text_msg(
-                "野良猫の情報提供ありがとうございます🐱\n\n"
-                "下のリンクからフォームを開いて、\n"
-                "1画面でまとめて入力してください📝\n\n"
+                "下のリンクからフォームを開いてください。\n"
+                "情報提供・TNR相談どちらもこちらからお送りいただけます。\n\n"
                 f"👉 {config.LIFF_URL}\n\n"
-                "📷 写真・動画がある場合は\n"
-                "フォーム送信後にこのトーク画面から\n"
-                "直接送ってください🐾"
+                "写真・動画がある場合はフォーム送信後に\n"
+                "このトーク画面から直接送ってください。"
             )])
         else:
             start_info_flow(token, user_id)
-        return
-    if text in ("TNRの相談をしたい", "TNR相談"):
-        start_tnr_flow(token, user_id)
         return
     if text in ("キャンセル", "終了"):
         reset_session(user_id)
@@ -352,6 +343,16 @@ def handle_image(event):
     user_id = event.source.user_id
     state = get_state(user_id)
     token = event.reply_token
+
+    # 個別相談モード中はLINE Official Account Managerで確認を促す通知
+    if user_id in bot_off_users:
+        if config.ADMIN_USER_ID:
+            display_name = get_display_name(user_id)
+            push(config.ADMIN_USER_ID, [text_msg(
+                f"📷【個別相談】{display_name} から画像が届きました\n"
+                f"LINE公式アカウント管理画面で確認してください。"
+            )])
+        return
 
     if state == INFO_PHOTO:
         session = get_session(user_id)
@@ -426,25 +427,27 @@ def submit_form():
         else:
             display_name = "不明（LIFFログイン未完了）"
 
+        purpose = payload.get("purpose", "").strip() or "不明"
         location = payload.get("location", "").strip()
-        count = payload.get("count", "")
-        timing = payload.get("timing", "").strip()
-        feeder = payload.get("feeder", "")
+        count = payload.get("count", "").strip() or "—"
+        timing = payload.get("timing", "").strip() or "—"
+        feeder = payload.get("feeder", "").strip() or "—"
         supplement = payload.get("supplement", "").strip() or "なし"
         photos = payload.get("photos", []) or []
         photo_count = len(photos)
 
-        logger.info(f"Form submit: user_id={user_id} name={display_name} photos={photo_count} loc={location[:30]}")
+        logger.info(f"Form submit: user_id={user_id} name={display_name} purpose={purpose} photos={photo_count} loc={location[:30]}")
 
         # ─── 管理者通知（最優先） ─────────────────────────────────────────
         if config.ADMIN_USER_ID:
             msg = config.ADMIN_INFO_TEMPLATE.format(
                 datetime=datetime.now().strftime("%Y/%m/%d %H:%M"),
+                purpose=purpose,
                 photos=f"{photo_count}枚" if photo_count else "なし",
                 location=location or "未入力",
-                count=count or "未入力",
-                timing=timing or "未入力",
-                feeder=feeder or "未入力",
+                count=count,
+                timing=timing,
+                feeder=feeder,
                 supplement=supplement,
             )
             try:

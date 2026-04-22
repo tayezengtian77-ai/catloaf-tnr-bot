@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>野良猫 情報提供フォーム</title>
+<title>野良猫 情報・TNR相談フォーム</title>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
   :root {
@@ -14,6 +14,7 @@
     --text-sub: #636E72;
     --border: #DFE6E9;
     --error: #E17055;
+    --warn: #E17055;
     --bg: #FFFFFF;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -89,7 +90,7 @@
     color: var(--primary-dark);
     font-weight: 600;
   }
-  .location-btn, .file-btn {
+  .location-btn {
     display: inline-flex; align-items: center; gap: 6px;
     margin-top: 8px;
     padding: 10px 14px;
@@ -103,6 +104,31 @@
   }
   .location-btn:active { background: var(--primary-light); }
   .location-status { font-size: 12px; color: var(--text-sub); margin-top: 6px; }
+
+  /* TNR注意事項 */
+  .tnr-notice {
+    margin-bottom: 22px;
+    border: 2px solid var(--warn);
+    border-radius: 12px;
+    overflow: hidden;
+    display: none;
+  }
+  .tnr-notice.show { display: block; }
+  .tnr-notice-header {
+    background: var(--warn);
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .tnr-notice-body {
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--text);
+  }
+
+  /* 写真案内 */
   .photo-notice {
     margin-bottom: 22px;
     border: 2px solid var(--primary);
@@ -135,6 +161,7 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 700;
   }
+
   .submit-btn {
     width: 100%;
     padding: 16px;
@@ -149,7 +176,6 @@
     box-shadow: 0 4px 12px rgba(74,155,142,.25);
   }
   .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .video-notice { display: none; }
   .error-msg { color: var(--error); font-size: 12px; margin-top: 4px; display: none; }
   .error-msg.show { display: block; }
   .loading {
@@ -203,13 +229,39 @@
 <body>
 
 <div class="header">
-  <h1>🐱 野良猫 情報提供</h1>
+  <h1>🐱 野良猫 情報・TNR相談</h1>
   <p>キャットローフ TNR活動</p>
 </div>
 
 <div class="container" id="formContainer">
   <form id="infoForm">
 
+    <!-- 目的 -->
+    <div class="field">
+      <div class="label">お問い合わせの目的 <span class="required">必須</span></div>
+      <div class="radio-group" id="purposeGroup">
+        <label class="radio-option"><input type="radio" name="purpose" value="情報提供">野良猫を見かけた（情報提供）</label>
+        <label class="radio-option"><input type="radio" name="purpose" value="TNR相談">TNR（不妊手術）をお願いしたい</label>
+        <label class="radio-option"><input type="radio" name="purpose" value="その他">その他</label>
+      </div>
+      <div class="error-msg" id="purposeError">選択してください</div>
+    </div>
+
+    <!-- TNR注意事項（TNR選択時のみ表示） -->
+    <div class="tnr-notice" id="tnrNotice">
+      <div class="tnr-notice-header">TNR相談をご希望の方へ（ご確認ください）</div>
+      <div class="tnr-notice-body">
+        ・場所や状況によってはお受けできない場合があります<br>
+        ・ご飯をあげている猫のTNRをご依頼の場合、費用の一部をご負担いただく場合があります<br>
+        ・補助金制度が利用できる場合はご案内します<br>
+        ・手術は「香川スペイクリニック」にて行う予定です（費用の目安：1匹 5,500円）<br>
+        ・対応までに数週間〜数ヶ月お時間をいただく場合があります<br>
+        ・猫の保護・引き取りは行っておりません<br>
+        ・いただいた個人情報は活動目的以外には使用いたしません
+      </div>
+    </div>
+
+    <!-- 場所 -->
     <div class="field">
       <div class="label">📍 場所 <span class="required">必須</span></div>
       <div class="hint">住所や目印を入力、または現在地ボタンをご利用ください</div>
@@ -221,7 +273,8 @@
       <div class="error-msg" id="locationError">場所を入力してください</div>
     </div>
 
-    <div class="field">
+    <!-- 頭数（情報提供のみ） -->
+    <div class="field info-only" style="display:none">
       <div class="label">🐱 何匹いましたか？ <span class="required">必須</span></div>
       <div class="radio-group" id="countGroup">
         <label class="radio-option"><input type="radio" name="count" value="1匹">1匹</label>
@@ -232,14 +285,16 @@
       <div class="error-msg" id="countError">選択してください</div>
     </div>
 
-    <div class="field">
+    <!-- 時間帯（情報提供のみ） -->
+    <div class="field info-only" style="display:none">
       <div class="label">🕐 見かけた時間帯 <span class="required">必須</span></div>
       <div class="hint">例：朝7時頃、夕方17〜18時頃 など</div>
-      <input type="text" id="timing" name="timing" placeholder="例：夕方17時頃" required>
+      <input type="text" id="timing" name="timing" placeholder="例：夕方17時頃">
       <div class="error-msg" id="timingError">入力してください</div>
     </div>
 
-    <div class="field">
+    <!-- 餌やり（情報提供のみ） -->
+    <div class="field info-only" style="display:none">
       <div class="label">🍚 ご飯をあげている人はいますか？ <span class="required">必須</span></div>
       <div class="radio-group" id="feederGroup">
         <label class="radio-option"><input type="radio" name="feeder" value="自分があげている">自分があげている</label>
@@ -250,12 +305,14 @@
       <div class="error-msg" id="feederError">選択してください</div>
     </div>
 
+    <!-- 補足・相談内容 -->
     <div class="field">
-      <div class="label">📝 その他・補足 <span class="optional">任意</span></div>
-      <div class="hint">気になる点があればご自由にどうぞ</div>
+      <div class="label" id="supplementLabel">📝 補足・相談内容 <span class="optional">任意</span></div>
+      <div class="hint" id="supplementHint">気になる点があればご自由にどうぞ</div>
       <textarea id="supplement" name="supplement" placeholder="例：子猫もいるようです"></textarea>
     </div>
 
+    <!-- 写真案内 -->
     <div class="photo-notice">
       <div class="photo-notice-header">📷 写真・動画について</div>
       <div class="photo-notice-body">
@@ -269,7 +326,7 @@
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <div><strong>LINEのトーク画面に戻って</strong><br>写真・動画を直接送ってください📤</div>
+          <div><strong>LINEのトーク画面に戻って</strong><br>写真・動画を直接送ってください</div>
         </div>
       </div>
     </div>
@@ -331,13 +388,46 @@
   }
   initLiff();
 
-  // Radio visual feedback
+  // Radio visual feedback（全グループ共通）
   document.querySelectorAll('.radio-group').forEach(group => {
     group.addEventListener('change', () => {
       group.querySelectorAll('.radio-option').forEach(opt => {
         opt.classList.toggle('checked', opt.querySelector('input').checked);
       });
     });
+  });
+
+  // 目的選択による表示切り替え
+  document.getElementById('purposeGroup').addEventListener('change', (e) => {
+    const purpose = e.target.value;
+    const isInfo = purpose === '情報提供';
+    const isTnr = purpose === 'TNR相談';
+
+    // 情報提供専用フィールドの表示
+    document.querySelectorAll('.info-only').forEach(el => {
+      el.style.display = isInfo ? '' : 'none';
+    });
+
+    // TNR注意事項の表示
+    document.getElementById('tnrNotice').classList.toggle('show', isTnr);
+
+    // 補足欄のラベル・ヒント・プレースホルダーを目的に合わせて変更
+    const label = document.getElementById('supplementLabel');
+    const hint = document.getElementById('supplementHint');
+    const textarea = document.getElementById('supplement');
+    if (isTnr) {
+      label.innerHTML = '📝 相談内容 <span class="optional">任意</span>';
+      hint.textContent = '頭数・時間帯・状況など、わかる範囲で教えてください';
+      textarea.placeholder = '例：猫が3匹いて子猫もいます。毎朝7時頃にご飯をあげています。';
+    } else if (purpose === 'その他') {
+      label.innerHTML = '📝 お問い合わせ内容 <span class="required">必須</span>';
+      hint.textContent = 'ご自由にご記入ください';
+      textarea.placeholder = 'お問い合わせ内容を入力してください';
+    } else {
+      label.innerHTML = '📝 その他・補足 <span class="optional">任意</span>';
+      hint.textContent = '気になる点があればご自由にどうぞ';
+      textarea.placeholder = '例：子猫もいるようです';
+    }
   });
 
   // Location button
@@ -363,7 +453,7 @@
         document.getElementById('location').value = `${lat}, ${lng}`;
         status.textContent = '✓ 座標を取得しました';
       }
-    }, (err) => {
+    }, () => {
       status.textContent = '位置情報の取得に失敗しました。手入力してください';
     }, { enableHighAccuracy: true, timeout: 10000 });
   });
@@ -372,17 +462,32 @@
   document.getElementById('infoForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // validation
+    const purpose = document.querySelector('input[name="purpose"]:checked');
     const loc = document.getElementById('location').value.trim();
-    const count = document.querySelector('input[name="count"]:checked');
-    const timing = document.getElementById('timing').value.trim();
-    const feeder = document.querySelector('input[name="feeder"]:checked');
+    const isInfo = purpose && purpose.value === '情報提供';
+    const isOther = purpose && purpose.value === 'その他';
+
+    const count = isInfo ? document.querySelector('input[name="count"]:checked') : null;
+    const timing = isInfo ? document.getElementById('timing').value.trim() : null;
+    const feeder = isInfo ? document.querySelector('input[name="feeder"]:checked') : null;
+    const supplement = document.getElementById('supplement').value.trim();
 
     let ok = true;
+    document.getElementById('purposeError').classList.toggle('show', !purpose); if (!purpose) ok = false;
     document.getElementById('locationError').classList.toggle('show', !loc); if (!loc) ok = false;
-    document.getElementById('countError').classList.toggle('show', !count); if (!count) ok = false;
-    document.getElementById('timingError').classList.toggle('show', !timing); if (!timing) ok = false;
-    document.getElementById('feederError').classList.toggle('show', !feeder); if (!feeder) ok = false;
+    if (isInfo) {
+      document.getElementById('countError').classList.toggle('show', !count); if (!count) ok = false;
+      document.getElementById('timingError').classList.toggle('show', !timing); if (!timing) ok = false;
+      document.getElementById('feederError').classList.toggle('show', !feeder); if (!feeder) ok = false;
+    }
+    // その他は補足必須
+    const supplementError = document.getElementById('supplement').closest('.field').querySelector('.error-msg');
+    if (isOther && !supplement) {
+      if (supplementError) { supplementError.classList.add('show'); }
+      ok = false;
+    } else {
+      if (supplementError) { supplementError.classList.remove('show'); }
+    }
     if (!ok) return;
 
     document.getElementById('loading').classList.add('show');
@@ -391,13 +496,14 @@
       const payload = {
         userId: userId,
         displayName: displayName,
+        purpose: purpose ? purpose.value : "",
         location: loc,
         lat: document.getElementById('location').dataset.lat || "",
         lng: document.getElementById('location').dataset.lng || "",
-        count: count.value,
-        timing: timing,
-        feeder: feeder.value,
-        supplement: document.getElementById('supplement').value.trim(),
+        count: count ? count.value : "",
+        timing: timing || "",
+        feeder: feeder ? feeder.value : "",
+        supplement: supplement,
         photos: []
       };
 
